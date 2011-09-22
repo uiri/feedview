@@ -1,0 +1,107 @@
+<?php require 'facebook.php';
+
+$facebook = new Facebook(array(
+                             'appId'  => '227291683992589',
+                             'secret' => 'a36035f90d7be029402e9a3960fc2e58',
+                         ));
+
+$user = $facebook->getUser();
+
+if ($user) {
+  try {
+    $user_profile = $facebook->api('/me');
+    $user_feed = $facebook->api('/me/home');
+  } catch (FacebookApiException $e) {
+    error_log($e);
+    $user = null;
+  }
+}
+
+if ($user) {
+  $logoutUrl = $facebook->getLogoutUrl();
+} else {
+  $loginUrl = $facebook->getLoginUrl();
+}
+
+?>
+<!doctype html>
+<html xmlns:fb="http://www.facebook.com/2008/fbml">
+  <head>
+    <title>Feed Vote</title>
+  </head>
+  <body>
+    <?php 
+       if ($user) {
+           echo "<a href='" . $logoutUrl . "'>Logout</a><br><br>";
+           $data = $user_feed['data'];
+           $first = "0";
+           $i = 0;
+           while($first == "0") {
+               if ( !(preg_match("/friends/", $data[$i]['story']))) {
+                   $first = $data[$i];
+               } else {
+                   $i++;
+               }
+           }
+           foreach ($data as $feed_item)
+               if ($feed_item) {
+                   $wall = preg_replace("/\_(.+)/", "", $feed_item['id']);
+                   if($feed_item != $first && !(preg_match("/friends/", $feed_item['story'])) && !(preg_match("/wrote on/", $feed_item['story'])) && !(preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story'])))) {
+                       echo "<div><hr></div>";
+                   }
+//                   echo "<div style='align:left'><img height='70px' src='http://graph.facebook.com/" . $feed_item['from']['id'] . "/picture'></div>";
+                   if($feed_item['story'] == NULL) {
+                       echo "<strong>" . $feed_item['from']['name'];
+                       if ($wall != $feed_item['from']['id']) {
+                           echo "</strong> &rarr; <strong>";
+                           foreach ($feed_item['to']['data'] as $person_to)
+                               if ($person_to['id'] == $wall) {
+                                   echo $person_to['name'];
+                               }
+                           echo "</strong> ";
+                       }
+                       echo "</strong> " . $feed_item['message'];
+                       if($feed_item['type'] == "status") {
+                           echo "<br><br>";
+                       } else if ($feed_item['type'] == "link") {
+                           echo "<br><div style='font-size:small;margin-left:50px;width:300px'><a href='" . $feed_item['link'] . "'>" . $feed_item['name'] . "</a><br>" . $feed_item['description'] . "</div><br>";
+                       }else if ($feed_item['type'] == "photo") {
+                           $image = preg_replace("/_s.jpg$/", "_b.jpg", $feed_item['picture']);
+                           echo "<br><a href='" . $image . "'><img max-height='600px' src='" . $image . "'></a><br><br>";
+                       } else if ($feed_item['type'] == "video") {
+                           echo "<br><iframe width='420' height='315' src='" . $feed_item['source'] . "?autoplay=1'></iframe><br><br>";
+                       } else {
+                           echo "This is an item of type " . $feed_item['type'] . " which is not handled yet. Please inform the developer.";
+                           print_r($feed_item);
+                       }
+                   } else if (preg_match("/friends/", $feed_item['story']) || preg_match("/wrote on/", $feed_item['story']) || (preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story'])))){
+                       echo "";
+                   } else {
+                       echo str_replace($feed_item['from']['name'], "<strong>" . $feed_item['from']['name'] . "</strong>", $feed_item['story']) . "<br>";
+                       if ($feed_item['type'] == "photo") {
+                           $image = preg_replace("/_s.jpg$/", "_b.jpg", $feed_item['picture']);
+                           echo "<a href='" . $image . "'><img max-height='600px' src='" . $image . "'></a><br>";
+                       } else if (preg_match("/likes a link/", $feed_item['story'])) {
+                           echo "<div style='font-size:small;margin-left:50px;width:300px'><a href='" . $feed_item['link'] . "'>" . $feed_item['name'] . "</a><br>" . $feed_item['description'] . "</div>";
+                       } else {
+                           print_r($feed_item);
+                       }
+                   }
+                   if($feed_item['likes']['count'] != NULL && !(preg_match("/friends/", $feed_item['story'])) && !(preg_match("/wrote on/", $feed_item['story'])) && !(preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story'])))) {
+                       if (count($feed_item['likes']['data']) == 1) {
+                           $like_people = $feed;
+                           if ($feed_item['likes']['count']
+                           if ($feed_item['likes']['count'] == 2) {
+                               echo $like_people . " and 1 other like this.<br>";
+                           } else {
+                               echo $like_people . " and " . $others . " others like this.<br>";
+                           }
+                       }
+                   }
+               }
+       } else {
+           echo "<a href='" . $loginUrl . "&scope=read_stream,publish_stream'>Login with Facebook</a>";
+       }
+    ?>
+  </body>
+</html>

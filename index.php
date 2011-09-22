@@ -10,7 +10,7 @@ $user = $facebook->getUser();
 if ($user) {
   try {
     $user_profile = $facebook->api('/me');
-    $user_feed = $facebook->api('/me/home');
+    $user_feed = $facebook->api('/me/home', array('limit' => '150'));
   } catch (FacebookApiException $e) {
     error_log($e);
     $user = null;

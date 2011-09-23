@@ -1,4 +1,5 @@
-<?php require 'facebook.php';
+<?php header("Content-type: text/html; charset=utf-8");
+require 'facebook.php';
 
 $facebook = new Facebook(array(
                              'appId'  => '227291683992589',
@@ -30,25 +31,30 @@ if ($user) {
     <title>Feed Vote</title>
   </head>
   <body>
-    <?php 
-       if ($user) {
+    <?php
+        if ($user) {
            echo "<a href='" . $logoutUrl . "'>Logout</a><br><br>";
            $data = $user_feed['data'];
            $first = "0";
            $i = 0;
            while($first == "0") {
-               if ( !(preg_match("/friends/", $data[$i]['story']))) {
+               $feed_item = $data[i];
+               if ($feed_item && !(preg_match("/friends/", $feed_item['story'])) && !(preg_match("/wrote on/", $feed_item['story'])) && !(preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story']))) && !($feed_item['type'] == "photo" && $feed_item['application']['canvas_name']) && !(preg_match("/video/", $feed_item['story']) && $feed_item['type'] == "status")) {
                    $first = $data[$i];
                } else {
                    $i++;
                }
            }
            foreach ($data as $feed_item)
-               if ($feed_item && !(preg_match("/friends/", $feed_item['story'])) && !(preg_match("/wrote on/", $feed_item['story'])) && !(preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story'])))) {
+               if ($feed_item && !(preg_match("/friends/", $feed_item['story'])) && !(preg_match("/wrote on/", $feed_item['story'])) && !(preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story']))) && !($feed_item['type'] == "photo" && $feed_item['application']['canvas_name']) && !(preg_match("/video/", $feed_item['story']) && $feed_item['type'] == "status")) {
                    $wall = preg_replace("/\_(.+)/", "", $feed_item['id']);
                    if($feed_item != $first) {
                        echo "<div style='display:block;clear:left'><hr></div>";
                    }
+                   $endOfUrl = str_replace("_", "/posts/", $feed_item['id']);
+                   echo "<span style='float:right'>";
+                   echo "[<a href='javascript:var xmlHttp = new XMLHttpRequest;xmlHttp.open(\"POST\", \"https://graph.facebook.com/{$feed_item['id']}/likes\");xmlHttp.send(\"access_token={$facebook->getAccessToken()}\");location.reload(true);'>Like</a>]&nbsp;";
+                   echo "[<a href='http://facebook.com/{$endOfUrl}'>View on Facebook</a>]</span>";
                    echo "<div style='float:left;padding-right:3px;padding-left:3px'><img height='70px' src='http://graph.facebook.com/" . $feed_item['from']['id'] . "/picture'></div>";
                    if($feed_item['story'] == NULL) {
                        echo "<strong>" . $feed_item['from']['name'];
@@ -60,30 +66,59 @@ if ($user) {
                                }
                            echo "</strong> ";
                        }
-                       echo "</strong> " . $feed_item['message'];
-                       if($feed_item['type'] == "status") {
-                           echo "<br>";
-                       } else if ($feed_item['type'] == "link") {
-                           echo "<br><div style='font-size:small;margin-left:80px;width:300px'><a href='" . $feed_item['link'] . "'>" . $feed_item['name'] . "</a><br>" . $feed_item['description'] . "</div>";
-                       }else if ($feed_item['type'] == "photo") {
-                           $image = preg_replace("/_s.jpg$/", "_b.jpg", $feed_item['picture']);
-                           echo "<br><img max-height='600px' src='" . $image . "'><br>";
-                       } else if ($feed_item['type'] == "video") {
-                           echo "<br><iframe width='420' height='315' src='" . $feed_item['source'] . "?autoplay=1'></iframe><br>";
-                       } else {
-                           echo "This is an item of type " . $feed_item['type'] . " which is not handled yet. Please inform the developer.";
-                           print_r($feed_item);
-                       }
+                       echo "</strong> " . str_replace("\n", "<br>", $feed_item['message']);
                    } else {
-                       echo str_replace($feed_item['from']['name'], "<strong>" . $feed_item['from']['name'] . "</strong>", $feed_item['story']) . "<br>";
-                       if ($feed_item['type'] == "photo") {
-                           $image = preg_replace("/_s.jpg$/", "_b.jpg", $feed_item['picture']);
-                           echo "<img max-height='600px' src='" . $image . "'>";
-                       } else if (preg_match("/likes a link/", $feed_item['story'])) {
-                           echo "<div style='font-size:small;margin-left:80px;width:300px'><a href='" . $feed_item['link'] . "'>" . $feed_item['name'] . "</a><br>" . $feed_item['description'] . "</div>";
+                       if ($feed_item['type'] == "link") {
+                           echo str_replace($feed_item['name'], "<a href='" . $feed_item['link'] . "'>" . $feed_item['name'] . "</a>", str_replace($feed_item['from']['name'], "<strong>" . $feed_item['from']['name'] . "</strong>", $feed_item['story']));
                        } else {
-                           print_r($feed_item);
+                           $story = $feed_item['story'];
+                           if ($feed_item['story_tags']) {
+                               foreach ($feed_item['story_tags'] as $tag_array) foreach ($tag_array as $tag)
+                                   $story = str_replace($tag['name'], "<strong>" . $tag['name'] . "</strong>", $story);
+                           }
+                           echo str_replace($feed_item['from']['name'], "<strong>" . $feed_item['from']['name'] . "</strong>", $story);
                        }
+                   }
+                   if ($feed_item['place'] != NULL) {
+                       echo " at <strong><span title='{$feed_item['place']['location']['street']}'>{$feed_item['place']['name']}</span></strong>";
+                   }
+                   if ($feed_item['with_tags'] != NULL) {
+                       echo " <strong>with</strong> ";
+                       foreach ($feed_item['with_tags']['data'] as $tag)
+                           if ($tag) {
+                               $r++;
+                               echo $tag['name'];
+                               if (count($feed_item['with_tags']['data']) != 1) {
+                                   if (count($feed_item['with_tags']['data']) == ($r + 1)) {
+                                       echo " and ";
+                                   } else if (count($feed_item['with_tags']['data']) > ($r + 1)) {
+                                       echo ", ";
+                                   }
+                               }
+                           }
+                   }
+                   if($feed_item['type'] == "status") {
+                       echo "<br>";
+                   } else if ($feed_item['type'] == "link") { 
+                       echo "<div style='font-size:small;margin-left:80px;width:300px'>";
+                       if ($feed_item['story'] == NULL) {
+                           echo "<a href='" . $feed_item['link'] . "'>" . $feed_item['name'] . "</a><br>" . $feed_item['description'] . "</div>";
+                       } else {
+                           foreach ($feed_item['properties'] as $property)
+                               echo $property['text'] . "<br>";
+                       }
+                       echo "</div>";
+                   }else if ($feed_item['type'] == "photo") {
+                       $image = preg_replace("/_s.jpg$/", "_b.jpg", $feed_item['picture']);
+                       echo "<br><img max-height='600px' src='" . $image . "'><br>";
+                   } else if ($feed_item['type'] == "video") {
+                       echo "<br><iframe width='420' height='315' src='" . $feed_item['source'] . "?autoplay=1'></iframe><br>";
+                   } else {
+                       echo "This is an item of type " . $feed_item['type'] . " which is not handled yet. Please inform the developer.";
+                       print_r($feed_item);
+                   }
+                   if (preg_match("/likes a link/", $feed_item['story'])) {
+                       echo "<div style='font-size:small;margin-left:80px;width:300px'><a href='" . $feed_item['link'] . "'>" . $feed_item['name'] . "</a><br>" . $feed_item['description'] . "</div>";
                    }
                    if($feed_item['likes']['count'] != NULL || $feed_item['comments']['count'] != NULL) {
                        echo "<div style='margin-left:80px;background-color:#dde3ee;border-width:2px;border-bottom-width:2em;border-color:#dde3ee;border-style:solid'>";
@@ -132,6 +167,36 @@ if ($user) {
                    $like_people = "";
                    if ($feed_item['comments']['count'] != 0) {
                        $j = 0;
+                       if (count($feed_item['comments']['data']) < $feed_item['comments']['count']) {
+                           $l = 0;
+                           $comments_data = $facebook->api("/" . $feed_item['id'], array('fields' => 'comments'));
+                           echo "<span id='show_{$feed_item['id']}' onClick='document.getElementById(\"{$feed_item['id']}\").style.display = \"block\";";
+                           echo "document.getElementById(\"show_{$feed_item['id']}\").style.display = \"none\"'>Show all <strong>{$feed_item['comments']['count']}</strong> comments.<br></span>";
+                           echo "<div id='{$feed_item['id']}' style='display:none'>";
+                           echo "<span onClick='document.getElementById(\"{$feed_item['id']}\").style.display = \"none\";";
+                           echo "document.getElementById(\"show_{$feed_item['id']}\").style.display = \"inline\"'>Hide all comments except last <strong>two</strong>.<br></span>";
+                           foreach ($comments_data['comments']['data'] as $comment) {
+                               if ($comment == $feed_item['comments']['data'][0]) {
+                                   break;
+                               }
+                               if ($l == 0) {
+                                   $l++;
+                               } else {
+                                   echo "<div style='display:block;clear:left;visibility:hidden'><hr></div>";
+                               }
+                               echo "<div style='float:left;padding-right:3px'><img src='http://graph.facebook.com/" . $comment['from']['id'] . "/picture'></div>";
+                               echo "<strong>" . $comment['from']['name'];
+                               echo "</strong> " . str_replace("\n", "<br>", $comment['message']);
+                               if ($comment['likes'] != NULL) {
+                                   if ($comment['likes'] == 1) {
+                                       echo "<br><strong>1 person</strong> likes this comment.";
+                                   } else {
+                                       echo "<br><strong>{$comment['likes']} people</strong> like this comment.";
+                                   }
+                               }
+                           }
+                           echo "<div style='clear:left;visibility:hidden'><hr></div></div>";
+                       }
                        foreach ($feed_item['comments']['data'] as $comment) {
                            if ($j == 0) {
                                $j++;
@@ -140,17 +205,24 @@ if ($user) {
                            }
                            echo "<div style='float:left;padding-right:3px'><img src='http://graph.facebook.com/" . $comment['from']['id'] . "/picture'></div>";
                            echo "<strong>" . $comment['from']['name'];
-                           echo "</strong> " . $comment['message'];
-//                       print_r($feed_item['comments']);
+                           echo "</strong> " . str_replace("\n", "<br>", $comment['message']);
+                           if ($comment['likes'] != NULL) {
+                               if ($comment['likes'] == 1) {
+                                   echo "<br><strong>1 person</strong> likes this comment.";
+                               } else {
+                                   echo "<br><strong>{$comment['likes']} people</strong> like this comment.";
+                               }
+                           }
                        }
                    }
                    if($feed_item['likes']['count'] != NULL || $feed_item['comments']['count'] != NULL) {
                        echo "</div><br>";
                    }
-               }
-       } else {
+                }
+            
+        } else {
            echo "<a href='" . $loginUrl . "&scope=read_stream,publish_stream'>Login with Facebook</a>";
-       }
+        }
     ?>
   </body>
 </html>

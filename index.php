@@ -2,8 +2,8 @@
 require 'facebook.php';
 
 $facebook = new Facebook(array(
-                             'appId'  => '', // app id
-                             'secret' => '', // app secret
+                             'appId'  => '',
+                             'secret' => '',
                          ));
 
 $user = $facebook->getUser();
@@ -71,11 +71,11 @@ if ($user) {
     <script src="http://connect.facebook.net/en_US/all.js"></script>
     <script>
     FB.init({
-        appId  : '', // app id
+        appId  : '',
         status : true, // check login status
         cookie : true, // enable cookies to allow the server to access the session
         xfbml  : true, // parse XFBML
-        channelURL : 'channel.php', // channel.html file
+        channelURL : 'http://xqz.ca/channel.php', // channel.html file
         oauth  : true // enable OAuth 2.0
     });
 function LikeSomething(id) {
@@ -264,40 +264,42 @@ function showComments(id, lastcomment) {
 }   
     </script>
     <?php
+
+    function show_feed_item($item) {
+        if (!(preg_match("/now friends/", $item['story'])) && 
+            !(preg_match("/wrote on/", $item['story'])) &&
+            !(preg_match("/hbd/", strtolower($item['message']))) &&
+            !(preg_match("/happy birthday/", strtolower($item['message']))) &&
+            !(preg_match("/likes/", $item['story']) && !(preg_match("/likes a link/", $item['story']))) &&
+            !(preg_match("/commented on a/", $item['story'])) &&
+            !($item['story'] != NULL && $item['type'] == "link" && !($item['properties'])) &&
+            !($item['story'] == NULL && $item['message'] == NULL && $item['type'] == "photo") &&
+            !(preg_match("/tagged in/", $item['story']) && $item['type'] == "status" && preg_match("/post/", $item['story'])) &&
+            !(preg_match("/video/", $item['story']) && $item['type'] == "status") &&
+            !(preg_match("/change/", $item['story']) && preg_match("/profile picture/", $item['story'])) &&
+            !($item['application']['canvas_name'] && $item['application']['canvas_name'] != "fbtouch" && $item['application']['canvas_name'] != "video") &&
+            !($item['application']['namespace'] && $item['application']['namespace'] != "fbtouch" && $item['application']['namespace'] != "twitter" && $item['application']['namespace'] != "bandpage")) {
+            return true;
+        }
+        return false;
+    }
+
     if ($user) {
-        echo "<a href='" . $logoutUrl . "'>Logout of Facebook</a><div style='display:inline;margin-left:30%;'><a id='shownotificationlink' href='javascript:showNotifications({$user});'>Show Notifications</a></div><span style='float:right'>Approximate Posts to Show: [<a href='/feedvote/'>20</a>] [<a href='/feedvote/50/'>50</a>] [<a href='/feedvote/100/'>100</a>] [<a href='/feedvote/150/'>150</a>]</span><br><br>\n";
+        echo "<a href='" . $logoutUrl . "'>Logout of Facebook</a><div style='display:inline;margin-left:30%;'><a id='shownotificationlink' href='javascript:showNotifications({$user});'>Show Notifications</a></div><span style='float:right'>Approximate Posts to Show: [<a href='/feedview/'>20</a>] [<a href='/feedview/50/'>50</a>] [<a href='/feedview/100/'>100</a>] [<a href='/feedview/150/'>150</a>]</span><br><br>\n";
         echo "<div id='notificationsgohere'></div>";
         $data = $user_feed['data'];
         $first = "0";
         $i = 0;
         while($first == "0") {
             $feed_item = $data[$i];
-            if ($feed_item && 
-                !(preg_match("/now friends/", $feed_item['story'])) && 
-                !(preg_match("/wrote on/", $feed_item['story'])) && 
-                !(preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story']))) &&
-                !($feed_item['story'] != NULL && $feed_item['type'] == "link" && !($feed_item['properties'])) &&
-                !($feed_item['story'] == NULL && $feed_item['message'] == NULL && $feed_item['type'] == "photo") &&
-                !(preg_match("/tagged in/", $feed_item['story']) && $feed_item['type'] == "status" && preg_match("/post/", $feed_item['story'])) &&
-                !(preg_match("/video/", $feed_item['story']) && $feed_item['type'] == "status") &&
-                !(preg_match("/change/", $feed_item['story']) && preg_match("/profile picture/", $feed_item['story'])) &&
-                !($feed_item['application']['canvas_name'] && $feed_item['application']['canvas_name'] != "fbtouch" && $feed_item['application']['canvas_name'] != "video")) {
+            if (show_feed_item($feed_item)) {
                 $first = $data[$i];
             } else {
                 $i++;
             }
         }
         foreach ($data as $feed_item)
-            if ($feed_item && 
-                !(preg_match("/now friends/", $feed_item['story'])) && 
-                !(preg_match("/wrote on/", $feed_item['story'])) &&
-                !(preg_match("/likes/", $feed_item['story']) && !(preg_match("/likes a link/", $feed_item['story']))) &&
-                !($feed_item['story'] != NULL && $feed_item['type'] == "link" && !($feed_item['properties'])) &&
-                !($feed_item['story'] == NULL && $feed_item['message'] == NULL && $feed_item['type'] == "photo") &&
-                !(preg_match("/tagged in/", $feed_item['story']) && $feed_item['type'] == "status" && preg_match("/post/", $feed_item['story'])) &&
-                !(preg_match("/video/", $feed_item['story']) && $feed_item['type'] == "status") &&
-                !(preg_match("/change/", $feed_item['story']) && preg_match("/profile picture/", $feed_item['story'])) &&
-                !($feed_item['application']['canvas_name'] && $feed_item['application']['canvas_name'] != "fbtouch" && $feed_item['application']['canvas_name'] != "video")) {
+            if (show_feed_item($feed_item)) {
                 $wall = preg_replace("/\_(.+)/", "", $feed_item['id']);
                 if($feed_item != $first) {
                     echo "<div style='display:block;clear:left'><hr></div>\n";
@@ -307,6 +309,7 @@ function showComments(id, lastcomment) {
                 echo "[<a href='javascript:;' onclick='window.open(\"http://facebook.com/{$endOfUrl}\", \"_blank\"); return false;'>View on Facebook</a>]</span>\n";
                 echo "<div style='float:left;padding-right:3px;padding-left:3px'>\n"; 
                 echo "<img height='70px' src='http://graph.facebook.com/" . $feed_item['from']['id'] . "/picture'>\n</div>\n";
+                //print_r($feed_item);
                 if($feed_item['story'] == NULL) {
                     echo "<strong>" . $feed_item['from']['name'];
                     if ($wall != $feed_item['from']['id']) {
@@ -336,6 +339,9 @@ function showComments(id, lastcomment) {
                     }
                 }
                 if ($feed_item['place'] != NULL) {
+                    if ($feed_item['type'] == "checkin") {
+                        echo " is";
+                    }
                     echo " at <strong><span title='{$feed_item['place']['location']['street']}'>{$feed_item['place']['name']}</span></strong>";
                 }
                 if ($feed_item['with_tags'] != NULL) {
@@ -353,7 +359,7 @@ function showComments(id, lastcomment) {
                             }
                     }
                 }
-                if($feed_item['type'] == "status") {
+                if($feed_item['type'] == "status" || $feed_item['type'] == "checkin") {
                     echo "<br>";
                 } else if ($feed_item['type'] == "link" || ($feed_item['type'] == "photo" && !($feed_item['picture']))) { 
                     echo "<div style='font-size:small;margin-left:80px;width:300px'>\n";
@@ -385,7 +391,19 @@ function showComments(id, lastcomment) {
                 } else if ($feed_item['type'] == "video" || $feed_item['type'] == "swf") {
                     $source = str_replace('&autoplay=1', '', $feed_item['source']);
                     $source = str_replace('&auto_play=true', '', $source);
-                    echo "<br><embed autoStart='1' width='420' height='315' src='" . $source . "'><br>";
+                    if (preg_match("/rootmusic/", $source)) {
+                        echo "<a href=\"#\" onClick=\"document.getElementById('".$source."').style.display = 'inline'\">Show embedded music</a><div style='display:none' id='".$source."'>";
+                    }
+                    if (preg_match("/youtube/", $source) && preg_match("/videoseries/", $source)) {
+                        echo "<iframe src='" . $source . "' width='420' height='315' frameborder='0'>Gay Youtube Playlist Embed Thing Here</iframe>";
+                    } else if (preg_match("/webm$/", $source)) {
+                        echo "<video src='".$source."' poster='/404.jpg' controls></video>";
+                    } else {
+                        echo "<br><embed autoStart='1' width='420' height='315' src='" . $source . "'><br>";
+                    }
+                    if (preg_match("/rootmusic/", $source)) {
+                        echo "</div>";
+                    }
                 } else {
                     echo "This is an item of type " . $feed_item['type'] . " which is not handled yet. Please inform the developer.";
                     print_r($feed_item);

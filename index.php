@@ -37,7 +37,7 @@ if ($user) {
 <!doctype html>
 <html xmlns:fb="http://www.facebook.com/2008/fbml">
   <head>
-    <title>Feed Vote</title>
+    <title>Feed View</title>
     <style>
       .black_overlay{
         display: none;
@@ -529,7 +529,7 @@ function showComments(id, lastcomment) {
         }
         echo "</div>";
 } else {
-    echo "<a href='" . $loginUrl . "&scope=read_stream,publish_stream'>Login with Facebook</a>";
+    echo "<a href='" . $loginUrl . "&scope=read_stream,publish_stream'>Login with Facebook</a><br><br><h2>Why?</h2><p>FeedView is a facebook feed viewer. We can't access your facebook feed without your permission.</p>";
 }
 echo "\n";
 echo '<script type="text/javascript">function thread_comments() {var threads = document.getElementsByClassName("put_in");for (var i=0;i<threads.length;i++) {parent = document.getElementById(threads[i].title);if (parent) {parent.innerHTML = document.getElementById(threads[i].title).innerHTML + threads[i].innerHTML;threads[i].innerHTML = "";}}}setTimeout(thread_comments, 5000);</script>';
